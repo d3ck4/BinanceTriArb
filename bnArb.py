@@ -67,68 +67,57 @@ class BnArber:
                 euro_available = random.randint(self.min_amount, self.max_amount)
                 x = self.floor(euro_available/self.get_ask(cur+"USDT")[0], self.precision[cur+"USDT"])
                 y = self.floor(x*0.999, self.precision[cur+"BTC"])
-                z = self.floor((y*0.999)*self.get_bid(cur+"BTC")[0], self.precision["BTCUSDT"])
+                z = self.floor((y*self.get_bid(cur+"BTC")[0])*0.999, self.precision["BTCUSDT"])
                 a = self.get_ask(cur+"USDT")[0]*x
                 b = self.get_bid("BTCUSDT")[0]*z
                 arbitrage = a/x*x/y*y/b
                 profit = b-a
                 if arbitrage < 0.99 and profit > 0 and euro_available > self.min_amount:
-                    euro_available = min(euro_available, self.max_amount)
-                    trade_amount = x
-                    order_success = self.order(cur+"USDT", "BUY", trade_amount)
+                    order_success = self.order(cur+"USDT", "BUY", x)
                     if order_success:
-                        trade_amount = y
-                        order_success = self.order(cur+"BTC", "SELL", trade_amount)
-                        if not order_success:
-                            self.sell_all()
-                            time.sleep(10)
-                            print("Balance:", self.get_balance("USDT"), "USDT")
-                            continue
-                        trade_amount = z
-                        order_success = self.order("BTCUSDT", "SELL", trade_amount)
-                        if not order_success:
-                            self.sell_all()
-                            time.sleep(10)
-                            print("Balance:", self.get_balance("USDT"), "USDT")
-                            continue
-                        print(a, "USDT, BUY", x, cur+"USDT, SELL", y, cur+"BTC, SELL", b, "BTCUSDT - ARBITRAGE:", arbitrage, "PROFIT:", profit, "USDT")
-                        print("Balance:", self.get_balance("USDT"), "USDT")
-                        time.sleep(30)
+                       order_success = self.order(cur+"BTC", "SELL", y)
+                       if order_success:
+                          order_success = self.order("BTCUSDT", "SELL", z)
+                          if order_success:
+                             print(a, "USDT, BUY", x, cur+"USDT, SELL", y, cur+"BTC, SELL", z, "BTCUSDT, GET", b, "USDT - ARBITRAGE:", arbitrage, "PROFIT:", profit, "USDT")
+                          else:
+                             order_success = self.order(cur+"BTC", "BUY", y)
+                             order_success = self.order(cur+"USDT", "SELL", x)
+                             print(z, "BTCUSDT SELL order fail. Revert previous order(s).")
+                       else:
+                          order_success = self.order(cur+"USDT", "SELL", x)
+                          print(y, cur+"BTC SELL order fail. Revert previous order(s).")
                     else:
-                        pass    
+                       print(x, cur+"USDT BUY order fail!")
+                    print("Balance:", self.get_balance("USDT"), "USDT", self.get_balance("BTC"), "BTC", file=sys.stderr)   
                 
                 euro_available = random.randint(self.min_amount, self.max_amount)
                 x = self.floor(euro_available/self.get_ask("BTCUSDT")[0], self.precision["BTCUSDT"])
-                y = self.floor((x*0.999)/self.get_ask(cur+"BTC")[0], self.precision[cur+"BTC"])
+                y = self.floor((x/self.get_ask(cur+"BTC")[0])*0.999, self.precision[cur+"BTC"])
                 z = self.floor(y*0.999, self.precision[cur+"USDT"])
                 a = self.get_ask("BTCUSDT")[0]*x
                 b = self.get_bid(cur+"USDT")[0]*z
                 arbitrage = a/x*x/y*y/b
                 profit = b-a
                 if arbitrage < 0.99 and profit > 0 and euro_available > self.min_amount:
-                    euro_available = min(euro_available, self.max_amount)
-                    trade_amount = x
-                    order_success = self.order("BTCUSDT", "BUY", trade_amount)
+                    order_success = self.order("BTCUSDT", "BUY", x)
                     if order_success:
-                        trade_amount = y
-                        order_success = self.order(cur+"BTC", "BUY", trade_amount)
-                        if not order_success:
-                            self.sell_all()
-                            print("Balance:", self.get_balance("USDT"), "USDT")
-                            time.sleep(10)
-                            continue
-                        trade_amount = z
-                        order_success = self.order(cur+"USDT", "SELL", trade_amount)
-                        if not order_success:
-                            self.sell_all()
-                            print("Balance:", self.get_balance("USDT"), "USDT")
-                            time.sleep(10)
-                            continue
-                        print(a, "USDT, BUY", x, "BTCUSDT, BUY", y, cur+"BTC, SELL", b, cur+"USDT - ARBITRAGE:", arbitrage, "PROFIT:", profit, "USDT")
-                        print("Balance:", self.get_balance("USDT"), "USDT")
-                        time.sleep(30)
+                       order_success = self.order(cur+"BTC", "BUY", y)
+                       if order_success:
+                          order_success = self.order(cur+"USDT", "SELL", z)
+                          if order_success:
+                             print(a, "USDT, BUY", x, "BTCUSDT, BUY", y, cur+"BTC, SELL", z, cur+"USDT, GET", b, "USDT - ARBITRAGE:", arbitrage, "PROFIT:", profit, "USDT")
+                          else:
+                             order_success = self.order(cur+"BTC", "SELL", y)
+                             order_success = self.order("BTCUSDT", "SELL", x)
+                             print(z, cur+"USDT SELL order fail. Revert previous order(s).")
+                       else:
+                          order_success = self.order("BTCUSDT", "SELL", x)
+                          print(y, cur+"BTC BUY order fail. Revert Previous order(s).")
                     else:
-                        pass
+                       print(x, "BTCUSDT BUY order fail!")
+                    print("Balance:", self.get_balance("USDT"), "USDT", self.get_balance("BTC"), "BTC")
+                    
             except KeyError:
                 pass
         self.timeout = False
@@ -142,19 +131,6 @@ class BnArber:
             return re["free"] 
         except:
             return 0
-
-    def sell_all(self):
-        """
-        Sell all currencies other than USDT.
-        """
-        try:
-            for cur in self.curs + ["BTC"]:
-                time.sleep(5)
-                amount = self.floor(self.get_balance(cur), self.precision[cur+"USDT"])
-                if amount*self.get_bid(cur+"USDT")[0] > self.min_amount:
-                    self.order(cur+"USDT", "SELL", amount)
-        except:
-            pass
 
     def order(self, market, side, amount):
         """
