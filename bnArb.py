@@ -17,7 +17,7 @@ class BnArber:
         self.curs = curs
         self.data = {}
         self.timeout = False
-        self.min_amount = 11
+        self.min_amount = min_amount
         self.max_amount = max_amount
         self.client = Client(public, secret)
         self.precision = {}
